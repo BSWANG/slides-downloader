@@ -4,14 +4,20 @@
 
 SCHED_URL=https://${EVENT}.sched.com
 
+if [ -n "${TOKEN}" ] && [ -n "${UCONTEXT}" ]; then
+  CURL="curl -H 'token=${TOKEN};ucontext=${UCONTEXT};'"
+else
+  CURL="curl"
+fi
+
 for DAY in "${DAYS[@]}"; do
   mkdir -p "${EVENT}/${DAY}"
-  LINKS=($(curl --referer ${SCHED_URL} -s ${SCHED_URL}/${DAY}/overview | grep -oEi "f='(.*)' cl" | cut -d\' -f 2 | tr '\n' ' '))
+  LINKS=($($CURL --referer ${SCHED_URL} -s ${SCHED_URL}/${DAY}/overview | grep -oEi "f='(.*)' cl" | cut -d\' -f 2 | tr '\n' ' '))
   echo "Requesting ${SCHED_URL}/${DAY}/overview"
-  echo "curl --referer ${SCHED_URL} -s ${SCHED_URL}/${DAY}/overview"
+  echo "$CURL --referer ${SCHED_URL} -s ${SCHED_URL}/${DAY}/overview"
   for LINK in "${LINKS[@]}"; do
     echo "Requesting ${SCHED_URL}/${LINK}"
-    FILE_URLS=$(curl -s ${SCHED_URL}/${LINK} | grep "file-uploaded" | cut -d\" -f 4)
+    FILE_URLS=$($CURL -s ${SCHED_URL}/${LINK} | grep "file-uploaded" | cut -d\" -f 4)
     if [ -n "${FILE_URLS}" ]; then
       FILE_URLS=$(printf "%s\n" "${FILE_URLS[@]}" | sort -u)
       ITER=0
@@ -30,7 +36,7 @@ for DAY in "${DAYS[@]}"; do
         fi
         if [[ ! -f "${FILEPATH}" ]]; then
           echo "Downloading ${FILEPATH} from ${FILE_URL}"
-          curl --retry 3 --retry-delay 3 -o "${FILEPATH}" -s "${FILE_URL}"
+          $CURL --retry 3 --retry-delay 3 -o "${FILEPATH}" -s "${FILE_URL}"
         else
           echo "Skip downloaded file ${FILEPATH}"
         fi
